@@ -32,88 +32,95 @@
   </template>
   
   <script>
-  import api from '../api';
-  import { useToast } from 'vue-toastification';
+import api from '../api';
+import { useToast } from 'vue-toastification';
 
-  export default {
-    name: 'AdminPage',
-    data() {
-      return {
-        mangas: [],
-        newManga: { title: '', author: '', genre: '', status: '', cover: '', summary: '' },
-        editingManga: null
-      }
-    },
-    async created() {
-      if (!this.isAdmin) {
-        this.$router.push('/login');
-        return;
-      }
-      await this.fetchMangas();
-    },
-    computed: {
-      isAdmin() {
-        const token = localStorage.getItem('token');
-        if (!token) return false;
-        const decoded = JSON.parse(atob(token.split('.')[1]));
-        return decoded.role === 'admin';
-      }
-    },
-    methods: {
-      async fetchMangas() {
-        try {
-          const response = await api.get('/mangas');
-          this.mangas = response.data;
-        } catch (err) {
-          console.error('Lỗi khi lấy danh sách truyện:', err);
-        }
-      },
-      async saveManga() {
-        const toast = useToast();
-  try {
-    if (this.editingManga) {
-      await api.put(`/mangas/${this.editingManga.id}`, this.newManga);
-      const index = this.mangas.findIndex(m => m.id === this.editingManga.id);
-      this.mangas[index] = { ...this.newManga, id: this.editingManga.id };
-      this.$toast.success('Cập nhật truyện thành công');
-    } else {
-      const response = await api.post('/mangas', this.newManga);
-      this.mangas.push(response.data);
-      this.$toast.success('Thêm truyện thành công');
+export default {
+  name: 'AdminPage',
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
+  data() {
+    return {
+      mangas: [],
+      newManga: { title: '', author: '', genre: '', status: '', cover: '', summary: '' },
+      editingManga: null
+    };
+  },
+  async created() {
+    if (!this.isAdmin) {
+      this.$router.push('/login');
+      return;
     }
-
-    this.newManga = { title: '', author: '', genre: '', status: '', cover: '', summary: '' };
-    this.editingManga = null;
-  } catch (err) {
-    console.error('Lỗi khi lưu truyện:', err);
-    this.$toast.error('Lỗi khi lưu truyện');
-  }
-},
-
-      editManga(manga) {
-        this.newManga = { ...manga };
-        this.editingManga = manga;
-      },
-      cancelEdit() {
+    await this.fetchMangas();
+  },
+  computed: {
+    isAdmin() {
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      return decoded.role === 'admin';
+    }
+  },
+  methods: {
+    async fetchMangas() {
+      try {
+        const response = await api.get('/mangas');
+        console.log('Mangas fetched:', response.data); // Log dữ liệu
+        this.mangas = response.data || [];
+      } catch (err) {
+        const message = err.response?.data?.message || 'Lỗi khi lấy danh sách truyện';
+        this.toast.error(message);
+      }
+    },
+    async saveManga() {
+      try {
+        if (this.editingManga) {
+          await api.put(`/mangas/${this.editingManga.id}`, this.newManga);
+          const index = this.mangas.findIndex(m => m.id === this.editingManga.id);
+          this.mangas[index] = { ...this.newManga, id: this.editingManga.id };
+          this.toast.success('Cập nhật truyện thành công');
+        } else {
+          const response = await api.post('/mangas', this.newManga);
+          this.mangas.push(response.data);
+          this.toast.success('Thêm truyện thành công');
+        }
         this.newManga = { title: '', author: '', genre: '', status: '', cover: '', summary: '' };
         this.editingManga = null;
-      },
-      async deleteManga(id) {
-        if (confirm('Bạn chắc chắn muốn xóa?')) {
-          try {
-            await api.delete(`/mangas/${id}`);
-            this.mangas = this.mangas.filter(m => m.id !== id);
-          } catch (err) {
-            console.error('Lỗi khi xóa truyện:', err);
-          }
-        }
-      },
-      manageChapters(mangaId) {
-        this.$router.push(`/admin/chapters/${mangaId}`);
+        await this.fetchMangas(); // Tải lại danh sách sau khi thêm/sửa
+      } catch (err) {
+        const message = err.response?.data?.message || 'Lỗi khi lưu truyện';
+        this.toast.error(message);
       }
+    },
+    editManga(manga) {
+      this.newManga = { ...manga };
+      this.editingManga = manga;
+    },
+    cancelEdit() {
+      this.newManga = { title: '', author: '', genre: '', status: '', cover: '', summary: '' };
+      this.editingManga = null;
+    },
+    async deleteManga(id) {
+      if (confirm('Bạn chắc chắn muốn xóa?')) {
+        try {
+          await api.delete(`/mangas/${id}`);
+          this.mangas = this.mangas.filter(m => m.id !== id);
+          this.toast.success('Xóa truyện thành công');
+          await this.fetchMangas(); // Tải lại danh sách sau khi xóa
+        } catch (err) {
+          const message = err.response?.data?.message || 'Lỗi khi xóa truyện';
+          this.toast.error(message);
+        }
+      }
+    },
+    manageChapters(mangaId) {
+      this.$router.push(`/admin/chapters/${mangaId}`);
     }
   }
-  </script>
+};
+</script>
   
   <style scoped>
   .admin { padding: 20px; max-width: 1200px; margin: 0 auto; }

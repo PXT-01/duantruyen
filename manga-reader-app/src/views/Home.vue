@@ -1,11 +1,12 @@
 <template>
   <div class="home">
-    <!-- Header với tìm kiếm -->
     <header class="header">
       <h1 class="logo">Manga Reader</h1>
       <div>
+        <span v-if="isLoggedIn" class="user-info">Level: {{ user.level }} | EXP: {{ user.exp }}</span>
         <router-link to="/manga-list" class="nav-link">Danh sách truyện</router-link>
         <router-link to="/favorites" class="nav-link">Yêu thích</router-link>
+        <router-link to="/profile" class="nav-link">Hồ sơ</router-link>
         <router-link v-if="isAdmin" to="/admin" class="nav-link">Quản lý</router-link>
         <span v-if="isLoggedIn" class="nav-link" @click="logout">Đăng xuất</span>
         <template v-else>
@@ -23,7 +24,6 @@
       </div>
     </header>
 
-    <!-- Thể loại -->
     <section class="genres-section">
       <h2>Thể Loại</h2>
       <div class="genre-list">
@@ -39,7 +39,6 @@
       </div>
     </section>
 
-    <!-- Truyện mới cập nhật -->
     <section class="manga-section">
       <h2>Truyện Mới Cập Nhật</h2>
       <div class="manga-grid">
@@ -49,11 +48,11 @@
           class="manga-item"
           @click="goToManga(manga.id)"
         >
-          <img :src="manga.cover" :alt="manga.title" />
+          <img :src="getImageUrl(manga.cover)" :alt="manga.title" />
           <div class="manga-info">
             <p class="title">{{ manga.title }}</p>
             <small>{{ manga.author }}</small>
-            <span class="status" :class="manga.status === 'Đang ra' ? 'ongoing' : 'completed'">
+            <span class="status" :class="manga.status === 'Ongoing' ? 'ongoing' : 'completed'">
               {{ manga.status }}
             </span>
           </div>
@@ -73,16 +72,17 @@ export default {
       searchQuery: '',
       selectedGenre: '',
       genres: [],
-      mangas: []
-    }
+      mangas: [],
+      user: { level: 1, exp: 0 }
+    };
   },
   computed: {
     isAdmin() {
-    const token = localStorage.getItem('token');
-    if (!token) return false;
-    const decoded = JSON.parse(atob(token.split('.')[1]));
-    return decoded.role === 'admin';
-  },
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      return decoded.role === 'admin';
+    },
     filteredMangas() {
       let result = this.mangas;
       if (this.selectedGenre) {
@@ -101,11 +101,17 @@ export default {
   },
   async created() {
     try {
-      const response = await api.get('/mangas');
-      this.mangas = response.data;
-      this.genres = [...new Set(response.data.map(m => m.genre))];
+      const [mangaResponse, userResponse] = await Promise.all([
+        api.get('/mangas'),
+        this.isLoggedIn ? api.get('/auth/me') : Promise.resolve(null)
+      ]);
+      this.mangas = mangaResponse.data;
+      this.genres = [...new Set(mangaResponse.data.map(m => m.genre).filter(g => g))];
+      if (userResponse) {
+        this.user = userResponse.data;
+      }
     } catch (err) {
-      console.error('Lỗi khi lấy danh sách truyện:', err);
+      console.error('Lỗi khi lấy dữ liệu:', err);
     }
   },
   methods: {
@@ -120,11 +126,15 @@ export default {
     },
     logout() {
       localStorage.removeItem('token');
+      localStorage.removeItem('favorites');
+      this.user = { level: 1, exp: 0 };
       this.$router.push('/login');
+    },
+    getImageUrl(cover) {
+      return cover ? `http://localhost:5000${cover}` : '';
     }
   }
-}
-
+};
 </script>
 
 <style scoped>
@@ -134,7 +144,6 @@ export default {
   padding: 20px;
 }
 
-/* Header */
 .header {
   display: flex;
   justify-content: space-between;
@@ -146,6 +155,10 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #e74c3c;
+}
+.user-info {
+  margin-right: 20px;
+  color: #333;
 }
 .search-bar {
   display: flex;
@@ -166,7 +179,6 @@ export default {
   cursor: pointer;
 }
 
-/* Genres */
 .genres-section {
   margin: 20px 0;
 }
@@ -187,7 +199,6 @@ export default {
   color: white;
 }
 
-/* Manga Section */
 .manga-section h2 {
   margin-bottom: 15px;
   color: #333;
@@ -239,6 +250,7 @@ export default {
   text-decoration: none;
   color: #e74c3c;
   font-weight: bold;
+  cursor: pointer;
 }
 .nav-link:hover {
   text-decoration: underline;

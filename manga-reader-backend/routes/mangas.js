@@ -1,63 +1,94 @@
 const express = require('express');
-const db = require('../config/db');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-
 const router = express.Router();
+const Manga = require('../models/Manga');
+const authMiddleware = require('../middleware/auth'); // Thêm import
+const multer = require('multer');
+const path = require('path');
 
-// Lấy danh sách truyện
-router.get('/', (req, res) => {
-  const query = 'SELECT * FROM mangas';
-  db.query(query, (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: 'Lỗi server' });
-    }
-    res.json(results);
-  });
+const storage = multer.diskStorage({
+  destination: './uploads/',
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
 });
 
-// Lấy chi tiết truyện
-router.get('/:id', (req, res) => {
-  const query = 'SELECT * FROM mangas WHERE id = ?';
-  db.query(query, [req.params.id], (err, results) => {
-    if (err || results.length === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy truyện' });
-    }
-    res.json(results[0]);
-  });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10000000 },
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    if (extname && mimetype) return cb(null, true);
+    cb('Error: Images only!');
+  }
 });
 
-// Thêm truyện mới
-router.post('/', authMiddleware, adminMiddleware, (req, res) => {
-  const { title, author, genre, status, cover, summary } = req.body;
-  const query = 'INSERT INTO mangas (title, author, genre, status, cover, summary) VALUES (?, ?, ?, ?, ?, ?)';
-  db.query(query, [title, author, genre, status, cover, summary], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: 'Lỗi khi thêm truyện' });
-    }
-    res.status(201).json({ id: result.insertId, ...req.body });
-  });
+router.get('/', async (req, res) => {
+  try {
+    const mangas = await Manga.find();
+    res.json(mangas);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// Cập nhật truyện
-router.put('/:id', authMiddleware, adminMiddleware, (req, res) => {
-  const { title, author, genre, status, cover, summary } = req.body;
-  const query = 'UPDATE mangas SET title = ?, author = ?, genre = ?, status = ?, cover = ?, summary = ? WHERE id = ?';
-  db.query(query, [title, author, genre, status, cover, summary, req.params.id], (err, result) => {
-    if (err || result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy truyện để cập nhật' });
-    }
-    res.json({ id: req.params.id, ...req.body });
-  });
+router.get('/:id', async (req, res) => {
+  try {
+    const manga = await Manga.findById(req.params.id);
+    if (!manga) return res.status(404).json({ message: 'Manga not found' });
+    res.json(manga);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// Xóa truyện
-router.delete('/:id', authMiddleware, adminMiddleware, (req, res) => {
-  const query = 'DELETE FROM mangas WHERE id = ?';
-  db.query(query, [req.params.id], (err, result) => {
-    if (err || result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy truyện để xóa' });
-    }
-    res.json({ message: 'Xóa truyện thành công' });
+router.post('/', upload.single('cover'), authMiddleware('admin'), async (req, res) => {
+  const { title, author, genre, status, summary } = req.body;
+  const manga = new Manga({
+    title,
+    author,
+    genre,
+    status,
+    summary,
+    cover: req.file ? `/uploads/${req.file.filename}` : ''
   });
+  try {
+    const newManga = await manga.save();
+    res.status(201).json(newManga);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
 });
+
+router.put('/:id', upload.single('cover'), authMiddleware('admin'), async (req, res) => {
+  try {
+    const manga = await Manga.findById(req.params.id);
+    if (!manga) return res.status(404).json({ message: 'Manga not found' });
+
+    manga.title = req.body.title || manga.title;
+    manga.author = req.body.author || manga.author;
+    manga.genre = req.body.genre || manga.genre;
+    manga.status = req.body.status || manga.status;
+    manga.summary = req.body.summary || manga.summary;
+    if (req.file) manga.cover = `/uploads/${req.file.filename}`;
+
+    const updatedManga = await manga.save();
+    res.json(updatedManga);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete('/:id', authMiddleware('admin'), async (req, res) => {
+  try {
+    const manga = await Manga.findById(req.params.id);
+    if (!manga) return res.status(404).json({ message: 'Manga not found' });
+    await manga.remove();
+    res.json({ message: 'Manga deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

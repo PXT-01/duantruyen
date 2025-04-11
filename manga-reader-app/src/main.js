@@ -1,11 +1,18 @@
-import { createApp } from 'vue';
+import Vue from 'vue';
 import App from './App.vue';
 import router from './router';
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 
-const app = createApp(App);
+Vue.config.productionTip = false;
 
-app.use(router);
-app.use(Toast, { timeout: 3000 }); // <- Quan trọng
-app.mount('#app');
+Vue.use(Toast, {
+  transition: 'Vue-Toastification__bounce',
+  maxToasts: 20,
+  newestOnTop: true
+});
+
+new Vue({
+  router,
+  render: h => h(App)
+}).$mount('#app');
