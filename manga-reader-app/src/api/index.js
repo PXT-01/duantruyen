@@ -53,7 +53,7 @@ export default {
 
   // Comments
   getComments() { return api.get('/comments'); },
-  deleteComment(id) { return api.delete(`/comments/${id}`); }
+  deleteComment(id) { return api.delete(`/comments/${id}`); },
   //
   getFeaturedMangas() { return api.get('/mangas/featured'); },
   getRanking() { return api.get('/mangas/ranking'); },
