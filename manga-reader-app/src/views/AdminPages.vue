@@ -1,6 +1,6 @@
 <template>
   <div class="admin-pages">
-    <h1>Quản Lý Trang - {{ chapter?.title }}</h1>
+    <h1>Quản Lý Trang - {{ chapter.title }}</h1>
     <button @click="$router.push(`/admin/chapters/${mangaId}`)" class="back-btn">Quay lại</button>
 
     <!-- Form thêm/sửa trang -->
@@ -84,8 +84,8 @@ export default {
       const chapterId = this.$route.params.chapterId;
       try {
         const [chapterResponse, pagesResponse] = await Promise.all([
-          api.get(`/chapter/${chapterId}`),
-          api.get(`/chapter/${chapterId}/pages`)
+          api.getChapter(chapterId),
+          api.getChapterPages(chapterId)
         ]);
         this.chapter = chapterResponse.data;
         this.pages = pagesResponse.data;
@@ -103,14 +103,14 @@ export default {
         }
 
         if (this.editingPage) {
-          await api.put(`/page/${this.editingPage.id}`, formData, {
+          await api.put(`/pages/${this.editingPage.id}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           const index = this.pages.findIndex(p => p.id === this.editingPage.id);
           this.pages[index] = { ...this.newPage, id: this.editingPage.id, image_url: this.newPage.image_url instanceof File ? `/uploads/${this.newPage.image_url.name}` : this.newPage.image_url };
           this.toast.success('Cập nhật trang thành công');
         } else {
-          const response = await api.post(`/chapter/${this.$route.params.chapterId}/pages`, formData, {
+          const response = await api.createPage(this.$route.params.chapterId, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           this.pages.push(response.data);
@@ -141,7 +141,7 @@ export default {
     async deletePage(id) {
       if (confirm('Bạn chắc chắn muốn xóa?')) {
         try {
-          await api.delete(`/page/${id}`);
+          await api.deletePage(id);
           this.pages = this.pages.filter(p => p.id !== id);
           this.toast.success('Xóa trang thành công');
           await this.fetchData();
@@ -155,18 +155,71 @@ export default {
 };
 </script>
 
-
 <style scoped>
-.admin-pages { padding: 20px; max-width: 1200px; margin: 0 auto; }
-.back-btn { background-color: #3498db; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
-.page-form { display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 20px; border-radius: 8px; }
-input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-.form-buttons { display: flex; gap: 10px; }
-button { padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; }
-button:hover { background-color: #c0392b; }
-.page-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-th { background-color: #e74c3c; color: white; }
-.edit-btn { background-color: #3498db; }
-.delete-btn { background-color: #e74c3c; }
+.admin-pages {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.back-btn {
+  background-color: #3498db;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+.page-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+}
+input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.form-buttons {
+  display: flex;
+  gap: 10px;
+}
+button {
+  padding: 10px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #c0392b;
+}
+.page-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+th {
+  background-color: #e74c3c;
+  color: white;
+}
+.edit-btn {
+  background-color: #3498db;
+}
+.delete-btn {
+  background-color: #e74c3c;
+}
+.preview-img {
+  max-width: 50px;
+  height: auto;
+}
 </style>

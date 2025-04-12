@@ -54,4 +54,10 @@ export default {
   // Comments
   getComments() { return api.get('/comments'); },
   deleteComment(id) { return api.delete(`/comments/${id}`); }
+  //
+  getFeaturedMangas() { return api.get('/mangas/featured'); },
+  getRanking() { return api.get('/mangas/ranking'); },
+  addFavorite(mangaId) { return api.post(`/users/favorites/${mangaId}`); },
+  removeFavorite(mangaId) { return api.delete(`/users/favorites/${mangaId}`); },
+  postComment(data) { return api.post('/comments', data); }
 };

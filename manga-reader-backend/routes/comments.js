@@ -13,6 +13,22 @@ router.get('/', authMiddleware('admin'), async (req, res) => {
   }
 });
 
+// Gửi bình luận
+router.post('/', authMiddleware(), async (req, res) => {
+  try {
+    const { manga, content } = req.body;
+    const comment = new Comment({
+      user: req.user.id,
+      manga,
+      content
+    });
+    await comment.save();
+    res.status(201).json(comment);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 // Xóa bình luận
 router.delete('/:id', authMiddleware('admin'), async (req, res) => {
   try {

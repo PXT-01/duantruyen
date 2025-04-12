@@ -1,41 +1,22 @@
 <template>
   <div class="auth-page">
     <div class="auth-container">
-      <h2>Đăng Ký</h2>
-      <form @submit.prevent="register">
+      <h2>Đăng Nhập</h2>
+      <form @submit.prevent="login">
         <div class="form-group">
           <label>Email:</label>
-          <input 
-            v-model="email" 
-            type="email" 
-            placeholder="Nhập email" 
-            required 
-          />
+          <input v-model="email" type="email" placeholder="Nhập email" required />
         </div>
         <div class="form-group">
           <label>Mật khẩu:</label>
-          <input 
-            v-model="password" 
-            type="password" 
-            placeholder="Nhập mật khẩu" 
-            required 
-          />
+          <input v-model="password" type="password" placeholder="Nhập mật khẩu" required />
         </div>
-        <div class="form-group">
-          <label>Xác nhận mật khẩu:</label>
-          <input 
-            v-model="confirmPassword" 
-            type="password" 
-            placeholder="Xác nhận mật khẩu" 
-            required 
-          />
-        </div>
-        <button type="submit" class="auth-btn">Đăng Ký</button>
+        <button type="submit" class="auth-btn">Đăng Nhập</button>
       </form>
       <p v-if="error" class="error">{{ error }}</p>
       <p>
-        Đã có tài khoản? 
-        <router-link to="/login" class="link">Đăng nhập ngay</router-link>
+        Chưa có tài khoản?
+        <router-link to="/register" class="link">Đăng ký ngay</router-link>
       </p>
     </div>
   </div>
@@ -46,7 +27,7 @@ import api from '../api';
 import { useToast } from 'vue-toastification';
 
 export default {
-  name: 'RegisterPage',
+  name: 'LoginPage',
   setup() {
     const toast = useToast();
     return { toast };
@@ -55,27 +36,17 @@ export default {
     return {
       email: '',
       password: '',
-      confirmPassword: '',
       error: ''
     };
   },
   methods: {
-    async register() {
-      if (this.password !== this.confirmPassword) {
-        this.error = 'Mật khẩu xác nhận không khớp!';
-        return;
-      }
+    async login() {
       try {
-        await api.post('/auth/register', {
-          email: this.email,
-          password: this.password,
-          level: 1,
-          exp: 0
-        });
-        this.toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
-        this.$router.push('/login');
+        const response = await api.login({ email: this.email, password: this.password });
+        localStorage.setItem('token', response.data.token);
+        this.$router.push('/');
       } catch (err) {
-        this.error = err.response?.data?.message || 'Đăng ký thất bại';
+        this.error = err.response?.data?.message || 'Đăng nhập thất bại';
         this.toast.error(this.error);
       }
     }
@@ -95,7 +66,7 @@ export default {
   background-color: white;
   padding: 30px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
 }

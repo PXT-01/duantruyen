@@ -18,13 +18,13 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="comment in comments" :key="comment.id">
-              <td>{{ comment.user?.email || 'N/A' }}</td>
-              <td>{{ comment.manga?.title || 'N/A' }}</td>
+            <tr v-for="comment in comments" :key="comment._id">
+              <td>{{ comment.user.email }}</td>
+              <td>{{ comment.manga.title }}</td>
               <td>{{ comment.content }}</td>
               <td>{{ new Date(comment.createdAt).toLocaleString() }}</td>
               <td>
-                <button @click="deleteComment(comment.id)" class="delete-btn">Xóa</button>
+                <button @click="deleteComment(comment._id)" class="delete-btn">Xóa</button>
               </td>
             </tr>
           </tbody>
@@ -35,14 +35,8 @@
   
   <script>
   import api from '../api';
-  import { useToast } from 'vue-toastification';
   
   export default {
-    name: 'AdminCommentsPage',
-    setup() {
-      const toast = useToast();
-      return { toast };
-    },
     data() {
       return {
         comments: [],
@@ -50,44 +44,28 @@
       };
     },
     async created() {
-      if (!this.isAdmin) {
-        this.$router.push('/login');
-        return;
-      }
       await this.fetchComments();
-    },
-    computed: {
-      isAdmin() {
-        try {
-          const token = localStorage.getItem('token');
-          if (!token) return false;
-          const decoded = JSON.parse(atob(token.split('.')[1]));
-          return decoded.role === 'admin';
-        } catch (err) {
-          return false;
-        }
-      }
     },
     methods: {
       async fetchComments() {
         this.isLoading = true;
         try {
-          const response = await api.get('/comments');
+          const response = await api.getComments();
           this.comments = response.data;
         } catch (err) {
-          this.toast.error('Lỗi khi lấy danh sách bình luận');
+          console.error('Lỗi khi lấy danh sách bình luận', err);
         } finally {
           this.isLoading = false;
         }
       },
-      async deleteComment(commentId) {
-        if (!confirm('Bạn chắc chắn muốn xóa bình luận này?')) return;
-        try {
-          await api.delete(`/comments/${commentId}`);
-          this.comments = this.comments.filter(c => c.id !== commentId);
-          this.toast.success('Xóa bình luận thành công');
-        } catch (err) {
-          this.toast.error('Lỗi khi xóa bình luận');
+      async deleteComment(id) {
+        if (confirm('Bạn chắc chắn muốn xóa bình luận này?')) {
+          try {
+            await api.deleteComment(id);
+            this.comments = this.comments.filter(c => c._id !== id);
+          } catch (err) {
+            console.error('Lỗi khi xóa bình luận', err);
+          }
         }
       }
     }
@@ -106,9 +84,9 @@
     margin-bottom: 20px;
   }
   .back-btn, .refresh-btn {
+    padding: 8px 16px;
     background-color: #3498db;
     color: white;
-    padding: 8px 16px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -116,7 +94,6 @@
   .comment-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
   }
   th, td {
     padding: 12px;
@@ -128,9 +105,9 @@
     color: white;
   }
   .delete-btn {
+    padding: 8px 16px;
     background-color: #e74c3c;
     color: white;
-    padding: 8px 16px;
     border: none;
     border-radius: 4px;
     cursor: pointer;

@@ -7,12 +7,13 @@ import Reader from '../views/Reader.vue';
 import ChapterReader from '../views/ChapterReader.vue';
 import Register from '../views/Register.vue';
 import Login from '../views/Login.vue';
-import AdminPage from '../views/AdminPage.vue'; // Thêm import
+import AdminPage from '../views/AdminPage.vue';
 import AdminChapters from '../views/AdminChapters.vue';
 import AdminPages from '../views/AdminPages.vue';
 import AdminUsers from '../views/AdminUsers.vue';
-import AdminComments from '../views/AdminComments.vue'; // Đã thêm trước đó
-import UserProfile from '../views/UserProfile.vue'; // Đã thêm trước đó
+import AdminComments from '../views/AdminComments.vue';
+import UserProfile from '../views/UserProfile.vue';
+import Genre from '../views/Genre.vue';
 
 Vue.use(VueRouter);
 
@@ -24,12 +25,13 @@ const routes = [
   { path: '/chapter/:chapterId', name: 'ChapterReader', component: ChapterReader },
   { path: '/register', name: 'Register', component: Register },
   { path: '/login', name: 'Login', component: Login },
-  { path: '/admin', name: 'Admin', component: AdminPage }, // Đã sửa
+  { path: '/admin', name: 'Admin', component: AdminPage },
   { path: '/admin/chapters/:mangaId', name: 'AdminChapters', component: AdminChapters },
   { path: '/admin/chapters/:mangaId/pages/:chapterId', name: 'AdminPages', component: AdminPages },
   { path: '/admin/users', name: 'AdminUsers', component: AdminUsers },
   { path: '/admin/comments', name: 'AdminComments', component: AdminComments },
-  { path: '/profile', name: 'UserProfile', component: UserProfile }
+  { path: '/profile', name: 'UserProfile', component: UserProfile },
+  { path: '/genre/:genre', name: 'Genre', component: Genre }
 ];
 
 const router = new VueRouter({

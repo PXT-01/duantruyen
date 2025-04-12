@@ -90,5 +90,42 @@ router.delete('/:id', authMiddleware('admin'), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// Tìm kiếm truyện
+router.get('/search', async (req, res) => {
+  try {
+    const { q, genre } = req.query;
+    let query = {};
+    if (q) {
+      query.title = { $regex: q, $options: 'i' };
+    }
+    if (genre) {
+      query.genre = genre;
+    }
+    const mangas = await Manga.find(query);
+    res.json(mangas);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Truyện nổi bật
+router.get('/featured', async (req, res) => {
+  try {
+    const mangas = await Manga.find().sort({ views: -1 }).limit(5);
+    res.json(mangas);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Bảng xếp hạng
+router.get('/ranking', async (req, res) => {
+  try {
+    const mangas = await Manga.find().sort({ views: -1 }).limit(10);
+    res.json(mangas);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
 
 module.exports = router;

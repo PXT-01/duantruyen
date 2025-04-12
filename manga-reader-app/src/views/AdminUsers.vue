@@ -5,55 +5,44 @@
         <button @click="$router.push('/admin')" class="back-btn">Quay lại</button>
         <button @click="fetchUsers" class="refresh-btn">Tải lại</button>
       </div>
-  
-      <section>
-        <h2>Danh Sách Người Dùng</h2>
-        <div v-if="isLoading" class="loading">Đang tải...</div>
-        <div v-else>
-          <table class="user-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Vai Trò</th>
-                <th>Cấp độ</th>
-                <th>EXP</th>
-                <th>Trạng thái</th>
-                <th>Hành Động</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in users" :key="user.id">
-                <td>{{ user.email }}</td>
-                <td>
-                  <select v-model="user.role" @change="updateUserRole(user)">
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td>{{ user.level }}</td>
-                <td>{{ user.exp }}</td>
-                <td>{{ user.isBlocked ? 'Bị khóa' : 'Hoạt động' }}</td>
-                <td>
-                  <button @click="toggleBlock(user)" class="action-btn">
-                    {{ user.isBlocked ? 'Mở khóa' : 'Khóa' }}
-                  </button>
-                  <button @click="resetExp(user.id)" class="action-btn">Đặt lại EXP</button>
-                  <button @click="editLevel(user)" class="action-btn">Sửa level</button>
-                  <button @click="viewFavorites(user.id)" class="action-btn">Yêu thích</button>
-                  <button @click="viewHistory(user.id)" class="action-btn">Lịch sử</button>
-                  <button @click="deleteUser(user.id)" class="delete-btn">Xóa</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-if="editingUser" class="edit-level">
-            <h3>Sửa Level: {{ editingUser.email }}</h3>
-            <input v-model.number="newLevel" type="number" min="1" />
-            <button @click="updateLevel">Lưu</button>
-            <button @click="editingUser = null">Hủy</button>
-          </div>
+      <div v-if="isLoading" class="loading">Đang tải...</div>
+      <div v-else>
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>Cấp độ</th>
+              <th>EXP</th>
+              <th>Trạng thái</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in users" :key="user.id">
+              <td>{{ user.username }}</td>
+              <td>{{ user.level }}</td>
+              <td>{{ user.exp }}</td>
+              <td>{{ user.isBlocked ? 'Bị khóa' : 'Hoạt động' }}</td>
+              <td>
+                <button @click="toggleBlock(user)" class="action-btn">
+                  {{ user.isBlocked ? 'Mở khóa' : 'Khóa' }}
+                </button>
+                <button @click="resetExp(user.id)" class="action-btn">Đặt lại EXP</button>
+                <button @click="editLevel(user)" class="action-btn">Sửa level</button>
+                <button @click="viewFavorites(user.id)" class="action-btn">Yêu thích</button>
+                <button @click="viewHistory(user.id)" class="action-btn">Lịch sử</button>
+                <button @click="deleteUser(user.id)" class="delete-btn">Xóa</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="editingUser" class="edit-level">
+          <h3>Sửa Level: {{ editingUser.username }}</h3>
+          <input v-model.number="newLevel" type="number" min="1" />
+          <button @click="updateLevel">Lưu</button>
+          <button @click="editingUser = null">Hủy</button>
         </div>
-      </section>
+      </div>
     </div>
   </template>
   
@@ -98,7 +87,7 @@
       async fetchUsers() {
         this.isLoading = true;
         try {
-          const response = await api.get('/auth/users');
+          const response = await api.getUsers();
           this.users = response.data;
         } catch (err) {
           this.toast.error('Lỗi khi lấy danh sách người dùng');
@@ -106,17 +95,9 @@
           this.isLoading = false;
         }
       },
-      async updateUserRole(user) {
-        try {
-          await api.put(`/auth/users/${user.id}`, { role: user.role });
-          this.toast.success('Cập nhật vai trò thành công');
-        } catch (err) {
-          this.toast.error('Lỗi khi cập nhật vai trò');
-        }
-      },
       async toggleBlock(user) {
         try {
-          await api.put(`/auth/users/${user.id}/block`, { isBlocked: !user.isBlocked });
+          await api.toggleBlockUser(user.id, { isBlocked: !user.isBlocked });
           user.isBlocked = !user.isBlocked;
           this.toast.success('Cập nhật trạng thái thành công');
         } catch (err) {
@@ -126,7 +107,7 @@
       async resetExp(userId) {
         if (!confirm('Bạn chắc chắn muốn đặt lại EXP?')) return;
         try {
-          await api.put(`/auth/users/${userId}/reset-exp`);
+          await api.resetExp(userId);
           const user = this.users.find(u => u.id === userId);
           user.exp = 0;
           user.level = 1;
@@ -141,7 +122,7 @@
       },
       async updateLevel() {
         try {
-          await api.put(`/auth/users/${this.editingUser.id}/level`, { level: this.newLevel });
+          await api.updateLevel(this.editingUser.id, { level: this.newLevel });
           this.editingUser.level = this.newLevel;
           this.toast.success('Cập nhật level thành công');
           this.editingUser = null;
@@ -151,7 +132,7 @@
       },
       async viewFavorites(userId) {
         try {
-          const response = await api.get(`/auth/users/${userId}/favorites`);
+          const response = await api.getFavorites(userId);
           const favorites = response.data;
           if (favorites.length === 0) {
             alert('Người dùng chưa có truyện yêu thích');
@@ -164,7 +145,7 @@
       },
       async viewHistory(userId) {
         try {
-          const response = await api.get(`/auth/users/${userId}/history`);
+          const response = await api.getHistory(userId);
           const history = response.data;
           if (history.length === 0) {
             alert('Người dùng chưa có lịch sử đọc');
@@ -178,7 +159,7 @@
       async deleteUser(id) {
         if (confirm('Bạn chắc chắn muốn xóa người dùng này?')) {
           try {
-            await api.delete(`/auth/users/${id}`);
+            await api.deleteUser(id);
             this.users = this.users.filter(u => u.id !== id);
             this.toast.success('Xóa người dùng thành công');
           } catch (err) {
@@ -191,17 +172,60 @@
   </script>
   
   <style scoped>
-  .admin-users { padding: 20px; max-width: 1200px; margin: 0 auto; }
-  .nav-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
-  .back-btn, .refresh-btn { background-color: #3498db; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
-  .user-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-  th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-  th { background-color: #e74c3c; color: white; }
-  .action-btn, .delete-btn { background-color: #e74c3c; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; }
-  .action-btn { background-color: #3498db; }
-  select { padding: 8px; border-radius: 4px; }
-  .edit-level { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-  .edit-level input { padding: 8px; margin-right: 10px; }
-  .edit-level button { padding: 8px 16px; }
-  .loading { text-align: center; padding: 20px; }
+  .admin-users {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .nav-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .back-btn, .refresh-btn {
+    background-color: #3498db;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .user-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  th {
+    background-color: #e74c3c;
+    color: white;
+  }
+  .action-btn, .delete-btn {
+    background-color: #3498db;
+    margin-right: 5px;
+  }
+  .delete-btn {
+    background-color: #e74c3c;
+  }
+  .edit-level {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+  }
+  .edit-level input {
+    padding: 8px;
+    margin-right: 10px;
+  }
+  .edit-level button {
+    padding: 8px 16px;
+  }
+  .loading {
+    text-align: center;
+    padding: 20px;
+  }
   </style>

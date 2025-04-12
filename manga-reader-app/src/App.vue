@@ -1,20 +1,46 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <Header @search="handleSearch" />
+    <div class="main-content">
+      <Sidebar />
+      <router-view :key="$route.fullPath" />
+    </div>
+    <Footer />
   </div>
 </template>
 
 <script>
+import Header from './components/Header.vue';
+import Sidebar from './components/Sidebar.vue';
+import Footer from './components/Footer.vue';
+
 export default {
-  name: 'App'
-}
+  components: {
+    Header,
+    Sidebar,
+    Footer
+  },
+  methods: {
+    handleSearch(mangas) {
+      // Xử lý kết quả tìm kiếm nếu cần
+    }
+  }
+};
 </script>
 
 <style>
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  background-color: #f8f9fa;
+}
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main-content {
+  display: flex;
+  flex: 1;
 }
 </style>

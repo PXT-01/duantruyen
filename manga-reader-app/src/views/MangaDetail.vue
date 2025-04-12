@@ -1,98 +1,141 @@
 <template>
   <div class="manga-detail">
-    <header class="header">
-      <h1>{{ manga.title }}</h1>
-      <button @click="$router.push('/manga-list')" class="back-btn">Quay lại</button>
-    </header>
-
-    <div class="manga-info">
-      <div class="cover">
-        <img :src="manga.cover" :alt="manga.title" />
+    <h1>{{ manga.title }}</h1>
+    <img :src="manga.cover" alt="Cover" class="cover" />
+    <p><strong>Tác giả:</strong> {{ manga.author }}</p>
+    <p><strong>Thể loại:</strong> {{ manga.genre }}</p>
+    <p><strong>Trạng thái:</strong> {{ manga.status }}</p>
+    <p><strong>Tóm tắt:</strong> {{ manga.summary }}</p>
+    <button v-if="isFavorite" @click="removeFromFavorites">Xóa khỏi yêu thích</button>
+    <button v-else @click="addToFavorites">Thêm vào yêu thích</button>
+    <h2>Danh sách chương</h2>
+    <ul>
+      <li v-for="chapter in chapters" :key="chapter._id">
+        <router-link :to="`/chapter/${chapter._id}`">{{ chapter.title }}</router-link>
+      </li>
+    </ul>
+    <h2>Bình luận</h2>
+    <div class="comments">
+      <div v-if="user" class="comment-form">
+        <textarea v-model="newComment" placeholder="Viết bình luận..."></textarea>
+        <button @click="submitComment">Gửi</button>
       </div>
-      <div class="details">
-        <p><strong>Tác giả:</strong> {{ manga.author }}</p>
-        <p><strong>Thể loại:</strong> {{ manga.genre }}</p>
-        <p><strong>Trạng thái:</strong> 
-          <span :class="manga.status === 'Ongoing' ? 'ongoing' : 'completed'">
-            {{ manga.status }}
-          </span>
-        </p>
-        <p><strong>Tóm tắt:</strong> {{ manga.summary }}</p>
-        <button 
-          @click="toggleFavorite" 
-          :class="{ 'favorited': isFavorite }"
-          class="favorite-btn"
-        >
-          {{ isFavorite ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' }}
-        </button>
+      <div v-else class="comment-login">
+        <router-link to="/login">Đăng nhập để bình luận</router-link>
       </div>
-    </div>
-
-    <div class="chapters">
-      <h2>Danh Sách Chương</h2>
-      <ul class="chapter-list">
-        <li 
-          v-for="chapter in chapters" 
-          :key="chapter.id" 
-          @click="goToChapter(chapter.id)"
-          class="chapter-item"
-        >
-          <span>{{ chapter.title }}</span>
-          <small>{{ chapter.pages }} trang - {{ chapter.status }}</small>
-        </li>
-      </ul>
+      <div v-for="comment in comments" :key="comment._id" class="comment">
+        <p><strong>{{ comment.user.email }}</strong> ({{ comment.createdAt | formatDate }})</p>
+        <p>{{ comment.content }}</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import api from '../api';
-import { useToast } from 'vue-toastification';
+import moment from 'moment';
 
 export default {
-  name: 'MangaDetailPage',
-  setup() {
-    const toast = useToast();
-    return { toast };
-  },
   data() {
     return {
       manga: {},
       chapters: [],
-      isFavorite: false
+      user: null,
+      isFavorite: false,
+      comments: [],
+      newComment: ''
     };
   },
-  async created() {
-    const mangaId = parseInt(this.$route.params.id);
-    try {
-      const [mangaResponse, chaptersResponse] = await Promise.all([
-        api.get(`/mangas/${mangaId}`),
-        api.get(`/${mangaId}/chapters`)
-      ]);
-      this.manga = mangaResponse.data;
-      this.chapters = chaptersResponse.data;
-      const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      this.isFavorite = favorites.some(m => m.id === mangaId);
-    } catch (err) {
-      this.toast.error('Lỗi khi lấy dữ liệu');
+  filters: {
+    formatDate(date) {
+      return moment(date).format('DD/MM/YYYY HH:mm');
     }
   },
+  async created() {
+    await this.fetchManga();
+    await this.fetchChapters();
+    await this.fetchUser();
+    await this.fetchComments();
+    this.checkFavorite();
+  },
   methods: {
-    toggleFavorite() {
-      this.isFavorite = !this.isFavorite;
-      let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      if (this.isFavorite) {
-        if (!favorites.some(m => m.id === this.manga.id)) {
-          favorites.push(this.manga);
-        }
-      } else {
-        favorites = favorites.filter(m => m.id !== this.manga.id);
+    async fetchManga() {
+      try {
+        const response = await api.getManga(this.$route.params.id);
+        this.manga = response.data;
+      } catch (err) {
+        this.$toast.error('Lỗi khi tải thông tin truyện');
       }
-      localStorage.setItem('favorites', JSON.stringify(favorites));
-      this.toast.success(this.isFavorite ? 'Đã thêm vào yêu thích' : 'Đã xóa khỏi yêu thích');
     },
-    goToChapter(chapterId) {
-      this.$router.push(`/manga/${this.manga.id}/chapter/${chapterId}`);
+    async fetchChapters() {
+      try {
+        const response = await api.getChapters(this.$route.params.id);
+        this.chapters = response.data;
+      } catch (err) {
+        this.$toast.error('Lỗi khi tải danh sách chương');
+      }
+    },
+    async fetchUser() {
+      try {
+        const response = await api.getMe();
+        this.user = response.data;
+      } catch (err) {
+        this.user = null;
+      }
+    },
+    async fetchComments() {
+      try {
+        const response = await api.getComments();
+        this.comments = response.data.filter(c => c.manga._id === this.$route.params.id);
+      } catch (err) {
+        this.$toast.error('Lỗi khi tải bình luận');
+      }
+    },
+    checkFavorite() {
+      if (this.user && this.user.favorites) {
+        this.isFavorite = this.user.favorites.some(
+          id => id.toString() === this.$route.params.id
+        );
+      }
+    },
+    async addToFavorites() {
+      try {
+        await api.addFavorite(this.$route.params.id);
+        this.$toast.success('Đã thêm vào danh sách yêu thích');
+        this.isFavorite = true;
+        this.user.favorites.push(this.$route.params.id);
+      } catch (err) {
+        this.$toast.error('Lỗi khi thêm vào yêu thích');
+      }
+    },
+    async removeFromFavorites() {
+      try {
+        await api.removeFavorite(this.$route.params.id);
+        this.$toast.success('Đã xóa khỏi danh sách yêu thích');
+        this.isFavorite = false;
+        this.user.favorites = this.user.favorites.filter(
+          id => id.toString() !== this.$route.params.id
+        );
+      } catch (err) {
+        this.$toast.error('Lỗi khi xóa khỏi yêu thích');
+      }
+    },
+    async submitComment() {
+      if (!this.newComment.trim()) {
+        this.$toast.error('Bình luận không được để trống');
+        return;
+      }
+      try {
+        await api.postComment({
+          manga: this.$route.params.id,
+          content: this.newComment
+        });
+        this.$toast.success('Đã gửi bình luận');
+        this.newComment = '';
+        await this.fetchComments();
+      } catch (err) {
+        this.$toast.error('Lỗi khi gửi bình luận');
+      }
     }
   }
 };
@@ -103,89 +146,74 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  font-family: 'Roboto', sans-serif;
 }
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.cover {
+  max-width: 300px;
+  height: auto;
+  border-radius: 8px;
 }
-.header h1 {
-  font-size: 28px;
-  color: #e74c3c;
-}
-.back-btn {
-  padding: 8px 16px;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.manga-info {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-.cover img {
-  width: 200px;
-  height: 300px;
-  object-fit: cover;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-.details {
-  flex: 1;
-}
-.details p {
+button {
   margin: 10px 0;
-}
-.details strong {
-  color: #333;
-}
-.ongoing {
-  color: #e74c3c;
-}
-.completed {
-  color: #2ecc71;
-}
-.favorite-btn {
-  margin-top: 15px;
-  padding: 10px 20px;
-  background-color: #e74c3c;
+  padding: 10px;
+  background-color: #ff4500;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
-.favorite-btn.favorited {
-  background-color: #2ecc71;
-}
-
-.chapters h2 {
-  color: #333;
-  margin-bottom: 15px;
+button:hover {
+  background-color: #e03e00;
 }
 .chapter-list {
   list-style: none;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
 }
-.chapter-item {
-  display: flex;
-  justify-content: space-between;
+.chapter-list li {
   padding: 10px;
-  background-color: #f9f9f9;
-  margin-bottom: 5px;
+  background-color: #f8f9fa;
   border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
-.chapter-item:hover {
-  background-color: #eee;
+.chapter-list a {
+  text-decoration: none;
+  color: #007bff;
 }
-.chapter-item small {
-  color: #777;
+.chapter-list a:hover {
+  text-decoration: underline;
+}
+.comments {
+  margin-top: 20px;
+}
+.comment-form textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+}
+.comment-form button {
+  background-color: #007bff;
+}
+.comment-form button:hover {
+  background-color: #0056b3;
+}
+.comment-login a {
+  color: #007bff;
+  text-decoration: none;
+}
+.comment-login a:hover {
+  text-decoration: underline;
+}
+.comment {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+.comment p {
+  margin: 5px 0;
 }
 </style>

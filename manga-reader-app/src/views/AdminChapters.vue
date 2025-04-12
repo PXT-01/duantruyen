@@ -1,6 +1,6 @@
 <template>
   <div class="admin-chapters">
-    <h1>Quản Lý Chương - {{ manga?.title }}</h1>
+    <h1>Quản Lý Chương - {{ manga.title }}</h1>
     <button @click="$router.push('/admin')" class="back-btn">Quay lại</button>
 
     <!-- Form thêm/sửa chương -->
@@ -117,8 +117,8 @@ export default {
       const mangaId = this.$route.params.mangaId;
       try {
         const [mangaResponse, chaptersResponse] = await Promise.all([
-          api.get(`/mangas/${mangaId}`),
-          api.get(`/${mangaId}/chapters`)
+          api.getManga(mangaId),
+          api.getChapters(mangaId)
         ]);
         this.manga = mangaResponse.data;
         this.chapters = chaptersResponse.data;
@@ -130,12 +130,12 @@ export default {
     async saveChapter() {
       try {
         if (this.editingChapter) {
-          await api.put(`/chapter/${this.editingChapter.id}`, this.newChapter);
+          await api.updateChapter(this.editingChapter.id, this.newChapter);
           const index = this.chapters.findIndex(ch => ch.id === this.editingChapter.id);
           this.chapters[index] = { ...this.newChapter, id: this.editingChapter.id };
           this.toast.success('Cập nhật chương thành công');
         } else {
-          const response = await api.post(`/${this.$route.params.mangaId}/chapters`, this.newChapter);
+          const response = await api.createChapter(this.$route.params.mangaId, this.newChapter);
           this.chapters.push(response.data);
           this.toast.success('Thêm chương thành công');
         }
@@ -158,7 +158,7 @@ export default {
     async deleteChapter(id) {
       if (confirm('Bạn chắc chắn muốn xóa?')) {
         try {
-          await api.delete(`/chapter/${id}`);
+          await api.deleteChapter(id);
           this.chapters = this.chapters.filter(ch => ch.id !== id);
           this.toast.success('Xóa chương thành công');
           await this.fetchData();
@@ -190,21 +190,94 @@ export default {
 </script>
 
 <style scoped>
-.pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
-.pagination button { padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
-.pagination button:disabled { background-color: #ccc; cursor: not-allowed; }
-.admin-chapters { padding: 20px; max-width: 1200px; margin: 0 auto; }
-.back-btn { background-color: #3498db; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
-.chapter-form { display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 20px; border-radius: 8px; }
-input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-.form-buttons { display: flex; gap: 10px; }
-button { padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; }
-button:hover { background-color: #c0392b; }
-.search-input { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; }
-.chapter-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-th { background-color: #e74c3c; color: white; }
-.edit-btn { background-color: #3498db; }
-.delete-btn { background-color: #e74c3c; }
-.manage-btn { background-color: #2ecc71; }
+.admin-chapters {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.back-btn {
+  background-color: #3498db;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+.chapter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+}
+input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.form-buttons {
+  display: flex;
+  gap: 10px;
+}
+button {
+  padding: 10px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #c0392b;
+}
+.search-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.chapter-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+th {
+  background-color: #e74c3c;
+  color: white;
+}
+.edit-btn {
+  background-color: #3498db;
+}
+.delete-btn {
+  background-color: #e74c3c;
+}
+.manage-btn {
+  background-color: #2ecc71;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.pagination button {
+  padding: 8px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pagination button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
 </style>
